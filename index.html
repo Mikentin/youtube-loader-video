@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YouTube Loader — Автоматическая загрузка видео</title>
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css" />
+    <!-- Premium Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+  <body>
+    
+    <div class="app-container">
+      
+      <!-- Header -->
+      <header class="header">
+        <div class="header-title-section">
+          <i data-lucide="youtube" class="header-icon" style="width: 32px; height: 32px;"></i>
+          <div>
+            <h1>YouTube Loader</h1>
+            <p>Пакетная автоматическая загрузка видео на YouTube по ссылке</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="btn-settings-toggle" class="btn-icon-only" title="Настройки Google API">
+            <i data-lucide="settings"></i>
+          </button>
+          <button id="btn-logout" class="btn-icon-only" title="Выйти" style="display: none;">
+            <i data-lucide="log-out"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Settings Modal -->
+      <div id="settings-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>
+              <i data-lucide="settings" class="header-icon"></i>
+              Настройки интеграции Google
+            </h3>
+            <button id="btn-settings-close" class="btn-icon-only" style="border: none; background: transparent;">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p style="fontSize: 0.85rem; color: var(--text-muted); marginBottom: 16px; lineHeight: 1.4;">
+              Для работы сайта необходимо создать <strong>OAuth Client ID</strong> в Google Cloud Console и включить YouTube Data API v3. 
+              Не забудьте добавить текущий URL в <em>Authorized JavaScript Origins</em>.
+            </p>
+            <div class="form-group">
+              <label>Google OAuth Client ID</label>
+              <div class="input-wrapper">
+                <input
+                  type="text"
+                  id="input-client-id"
+                  class="input-text"
+                  placeholder="xxxxxx-xxxxxxxx.apps.googleusercontent.com"
+                />
+                <i data-lucide="lock" class="input-icon" style="width: 16px; height: 16px;"></i>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button id="btn-settings-cancel" class="btn btn-secondary" style="width: auto;">
+              Отмена
+            </button>
+            <button id="btn-settings-save" class="btn btn-primary" style="width: auto;">
+              Сохранить
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dashboard Grid -->
+      <div class="dashboard-grid">
+        
+        <!-- Left Side: Auth & Options -->
+        <div style="display: flex; flex-direction: column; gap: 30px;">
+          
+          <!-- Auth Card -->
+          <div class="glass-card">
+            <h3 class="card-title">
+              <i data-lucide="user" style="width: 18px; height: 18px;"></i>
+              Авторизация Google
+            </h3>
+            <div class="auth-panel">
+              <!-- Signed Out State -->
+              <div id="auth-signed-out">
+                <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 16px;">
+                  Войдите через Google, чтобы предоставить приложению доступ к загрузке видео на ваш YouTube канал.
+                </p>
+                <div id="auth-error-alert" class="error-alert" style="display: none; margin-bottom: 12px;">
+                  <i data-lucide="alert-circle" style="width: 16px; height: 16px;"></i>
+                  <span id="auth-error-text">Ошибка</span>
+                </div>
+                <button id="btn-login" class="btn btn-primary">
+                  <i data-lucide="youtube" style="width: 18px; height: 18px;"></i>
+                  <span id="btn-login-text">Войти через Google</span>
+                </button>
+              </div>
+              
+              <!-- Signed In State -->
+              <div id="auth-signed-in" style="display: none;">
+                <div class="user-profile">
+                  <img id="user-avatar" src="" alt="Avatar" class="user-avatar" style="display: none;" />
+                  <div id="user-avatar-placeholder" class="user-avatar" style="background: var(--bg-input); display: flex; align-items: center; justify-content: center;">
+                    <i data-lucide="user" style="width: 20px; height: 20px;"></i>
+                  </div>
+                  <div class="user-info">
+                    <div id="user-name" class="user-name">YouTube канал</div>
+                    <div class="user-status">
+                      <span class="status-dot"></span>
+                      Подключено
+                    </div>
+                  </div>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 12px;">
+                  Токен активен. Вы можете загружать видео.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Video Options Card -->
+          <div class="glass-card">
+            <h3 class="card-title">
+              <i data-lucide="info" style="width: 18px; height: 18px;"></i>
+              Параметры видео
+            </h3>
+            
+            <div class="form-group">
+              <label>Режим именования</label>
+              <div style="display: flex; gap: 16px; margin-top: 4px; padding-bottom: 8px;">
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-main); font-size: 0.85rem; font-weight: normal;">
+                  <input type="radio" name="naming-mode" value="global" checked style="accent-color: var(--color-primary);" />
+                  <span>Одно имя для всех</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-main); font-size: 0.85rem; font-weight: normal;">
+                  <input type="radio" name="naming-mode" value="individual" style="accent-color: var(--color-primary);" />
+                  <span>Раздельные имена</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group" id="global-name-group">
+              <label>Название видео</label>
+              <div class="input-wrapper">
+                <input
+                  type="text"
+                  id="input-name-prefix"
+                  class="input-text"
+                  placeholder="Введите название для видео"
+                />
+                <i data-lucide="file-video" class="input-icon" style="width: 16px; height: 16px;"></i>
+              </div>
+            </div>
+
+            <div class="locked-params-info">
+              <div style="font-weight: 600; color: var(--text-main); margin-bottom: 4px; font-size: 0.85rem;">
+                Автоматические настройки:
+              </div>
+              <div class="locked-param-item">
+                <i data-lucide="check-circle-2" style="width: 14px; height: 14px;"></i>
+                <span>Доступ по ссылке (Unlisted)</span>
+              </div>
+              <div class="locked-param-item">
+                <i data-lucide="check-circle-2" style="width: 14px; height: 14px;"></i>
+                <span>Параметр: Не для детей (Not for Kids)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Helper Guide -->
+          <div id="helper-guide-developer" class="helper-box">
+            <h4>Как начать работу:</h4>
+            <ol>
+              <li>Нажмите шестеренку сверху справа и введите ваш <code>OAuth Client ID</code>.</li>
+              <li>Нажмите кнопку <strong>Войти через Google</strong> и разрешите доступ.</li>
+              <li>Перетащите видео в зону загрузки справа.</li>
+              <li>Задайте нужное имя.</li>
+              <li>Нажмите кнопку <strong>Запустить загрузку</strong>.</li>
+            </ol>
+          </div>
+
+          <div id="helper-guide-user" class="helper-box" style="display: none;">
+            <h4>Как начать работу:</h4>
+            <ol>
+              <li>Нажмите кнопку <strong>Войти через Google</strong> и авторизуйтесь.</li>
+              <li>Перетащите видео в зону загрузки справа.</li>
+              <li>Задайте нужное имя в панели «Параметры видео».</li>
+              <li>Нажмите кнопку <strong>Запустить загрузку файлов</strong>.</li>
+            </ol>
+          </div>
+
+        </div>
+
+        <!-- Right Side: Dropzone & Queue -->
+        <div style="display: flex; flex-direction: column; gap: 30px;">
+          
+          <!-- Dropzone -->
+          <div id="dropzone" class="dropzone">
+            <i data-lucide="upload" class="dropzone-icon" style="width: 48px; height: 48px;"></i>
+            <div class="dropzone-title">Перетащите видео сюда или кликните для выбора</div>
+            <div class="dropzone-subtitle">Поддерживаются любые популярные видео-форматы</div>
+            <input 
+              id="file-picker" 
+              type="file" 
+              class="file-input" 
+              multiple 
+              accept="video/*" 
+            />
+          </div>
+
+          <!-- Queue Area -->
+          <div class="glass-card" style="flex-grow: 1;">
+            <div class="queue-header">
+              <h3 class="queue-title" style="margin-bottom: 0;">
+                Очередь загрузки
+                <span id="queue-badge" class="queue-badge" style="display: none;">0</span>
+              </h3>
+              <button id="btn-clear-completed" class="btn btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem; display: none;">
+                Очистить завершенные
+              </button>
+            </div>
+
+            <!-- Queue List -->
+            <div id="queue-list" class="queue-list">
+              <!-- Rendered via JS -->
+              <div class="empty-queue">
+                <i data-lucide="file-video" style="width: 48px; height: 48px; stroke-width: 1;"></i>
+                <div>Очередь пуста</div>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">
+                  Добавьте файлы, перетащив их выше, чтобы начать
+                </p>
+              </div>
+            </div>
+
+            <!-- Upload Start Footer -->
+            <div id="queue-footer" style="margin-top: 24px; border-top: 1px solid var(--border-light); padding-top: 16px; display: none;">
+              <button id="btn-start-uploads" class="btn btn-primary" style="gap: 10px;">
+                <i data-lucide="play" style="width: 18px; height: 18px; fill: currentColor;"></i>
+                <span id="btn-start-text">Запустить загрузку файлов</span>
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+      <div class="footer">
+        <p style="font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+          &copy; 2026 YouTube Loader. Danil Tkachuk.
+        </p>
+      </div>
+    </div>
+
+    <!-- JS Logic -->
+    <script src="app.js"></script>
+  </body>
+</html>
